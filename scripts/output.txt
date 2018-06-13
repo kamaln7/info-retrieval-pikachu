@@ -1,0 +1,27 @@
+doc=178851, score=35.6262, text=Canada two official languages, English French, hence two anthems. America one official language, English. There may many minorities USA enough change National Anthem another language. snippet=
+doc=178842, score=35.0399, text=because canada two official languages, US english official language.. snippet=
+{
+  "id": 0,
+  "answers": [
+    {
+      "answer": "Because outlined Constitution. In order declare official language entire nation would done Constitutional Amendment. Many states individually declared english official language, declared english AND spanish official languages (Florida one them).",
+      "score": 37.928466796875
+    },
+    {
+      "answer": "There \"official national language\" claim. Sorry.. mistaken. The consitution actually declare English \"national\" \"official\" language.",
+      "score": 36.536163330078125
+    },
+    {
+      "answer": "I get annoyed! This United States America! Our language English, bother \"press 1 English\". I need \"press 1\" anything else. It given English spoken.",
+      "score": 36.10155487060547
+    },
+    {
+      "answer": "Canada two official languages, English French, hence two anthems. America one official language, English. There may many minorities USA enough change National Anthem another language.",
+      "score": 35.62616729736328
+    },
+    {
+      "answer": "because canada two official languages, US english official language..",
+      "score": 35.0399169921875
+    }
+  ]
+}
