@@ -255,7 +255,7 @@ public class HandsOnDemo {
 		                                doc.get(BODY_FIELD), Arrays.stream(snippets).collect(Collectors.joining(" "))));
                     		}
                     }
-                } // end of top-docs 2
+                } // end of top-docs 3
                 
                 //String[] most_freq_words = countMostFreqWord();
             }
