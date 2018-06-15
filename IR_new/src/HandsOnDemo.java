@@ -97,7 +97,7 @@ public class HandsOnDemo {
 					// we only store the question ID in case we need to use it later
 					doc.add(new StoredField("questionID", entry.ID));
 
-					doc.add(new TextField("body", answer, Store.YES));
+					doc.add(new TextField(BODY_FIELD, answer, Store.YES));
 					writer.addDocument(doc);
 				}
 			}
@@ -157,18 +157,13 @@ public class HandsOnDemo {
 						tmp_new_query.append("body: " + word_add + " ");
 					}
 				}
-				String new_query = tmp_new_query.toString();
-
-				if (new_query.charAt(new_query.length() - 1) == ' ') {
-					new_query = new_query.substring(0, new_query.length() - 1);
-				}
+				String new_query = tmp_new_query.toString().trim();
 
 				final Query q = qp.parse(new_query);
 				System.out.println("Query: " + q);
 				System.out.println();
 
 				final IndexSearcher searcher = new IndexSearcher(reader);
-				// searcher.setSimilarity(new ClassicSimilarity());
 				searcher.setSimilarity(new BM25Similarity());
 				final TopDocs td = searcher.search(q, 300);
 
