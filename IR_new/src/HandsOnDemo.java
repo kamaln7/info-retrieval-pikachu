@@ -15,6 +15,8 @@ import java.util.stream.Collectors;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.Analyzer.TokenStreamComponents;
+import org.apache.lucene.analysis.CharArraySet;
+import org.apache.lucene.analysis.core.StopAnalyzer;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.codecs.simpletext.SimpleTextCodec;
 import org.apache.lucene.document.Document;
@@ -138,14 +140,6 @@ public class HandsOnDemo {
 					}
 				}
 
-				for (int i = 0; i < query_words.size(); i++) {
-					for (int j = 0; j < WH_STOP_WORDS.length; j++) {
-						if (query_words.get(i).toLowerCase().equals(WH_STOP_WORDS[j])) {
-							query_words.remove(i);
-						}
-					}
-				}
-
 				StringBuilder tmp_new_query = new StringBuilder();
 
 				for (int i = 0; i < query_words.size(); i++) {
@@ -246,6 +240,11 @@ public class HandsOnDemo {
 	}
 
 	private static Analyzer newAnalyzer() {
-		return new EnglishAnalyzer();
+		CharArraySet stopWords = CharArraySet.copy(StopAnalyzer.ENGLISH_STOP_WORDS_SET);
+
+		for (String stopWord : WH_STOP_WORDS) {
+			stopWords.add(stopWord.toLowerCase());
+		}
+		return new EnglishAnalyzer(stopWords);
 	}
 }
