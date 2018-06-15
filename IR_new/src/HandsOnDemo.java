@@ -20,6 +20,7 @@ import org.apache.lucene.codecs.simpletext.SimpleTextCodec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
@@ -73,6 +74,12 @@ public class HandsOnDemo {
 
 				for (String answer : answers) {
 					Document doc = new Document();
+
+					// THIS IS NOT INDEXED!
+					// StoredField: Stored-only value for retrieving in summary results
+					// we only store the question ID in case we need to use it later
+					doc.add(new StoredField("questionID", entry.ID));
+
 					doc.add(new TextField("body", answer, Store.YES));
 					writer.addDocument(doc);
 				}
@@ -227,16 +234,6 @@ public class HandsOnDemo {
 			e.printStackTrace();
 		}
 	}
-
-	/*
-	 * private static String[] countMostFreqWord() throws FileNotFoundException,
-	 * IOException {
-	 * 
-	 * try (BufferedReader br = new BufferedReader(new FileReader(path))) { String
-	 * answer; while ((answer = br.readLine()) != null) {
-	 * 
-	 * } } }
-	 */
 
 	protected TokenStreamComponents createComponents(String string) {
 		throw new UnsupportedOperationException("Not supported yet."); // To change body of generated methods, choose
