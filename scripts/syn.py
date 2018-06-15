@@ -18,44 +18,44 @@ import sys
 #        s = wordFromList1[0].wup_similarity(wordFromList2[0])
 #        print(s)
 
-wordx = sys.argv[1]
-# wordx = 'european'
-sem1 = wordnet.synsets(wordx.lower())
-flag = 1
-# maxscore = 0.0
-# score = 0.0
+for wordx in sys.argv[1:]:
+    # wordx = 'european'
+    sem1 = wordnet.synsets(wordx.lower())
+    flag = 1
+    # maxscore = 0.0
+    # score = 0.0
 
-for ss in sem1:
-    if flag == 0:
-        break
-    for word in ss.lemma_names():
-        if word.lower() != wordx:
-            print(word)
-            flag = 0
+    for ss in sem1:
+        if flag == 0:
             break
+        for word in ss.lemma_names():
+            if word.lower() != wordx:
+                print(word)
+                flag = 0
+                break
 
-# sem1 = sem1[0].lemma_names()
-# print(sem1)
-# for i in sem1:
-    # score = i.wup_similarity(sem1[0])
-    # i = i.name().split(".")[0].replace('_', ' ')
-    # if i != wordx:
-        # print(i)
-        # break
-    # if score and maxscore < score:
-        # maxscore = score
-        # wordx1 = i
-        # wordx2 = sem1[0]
+    # sem1 = sem1[0].lemma_names()
+    # print(sem1)
+    # for i in sem1:
+        # score = i.wup_similarity(sem1[0])
+        # i = i.name().split(".")[0].replace('_', ' ')
+        # if i != wordx:
+            # print(i)
+            # break
+        # if score and maxscore < score:
+            # maxscore = score
+            # wordx1 = i
+            # wordx2 = sem1[0]
 
-# wordx1 = wordx1.name().split(".")[0].replace('_', ' ')
-# wordx2 = wordx2.name().split(".")[0].replace('_', ' ')
+    # wordx1 = wordx1.name().split(".")[0].replace('_', ' ')
+    # wordx2 = wordx2.name().split(".")[0].replace('_', ' ')
 
-# if wordx1 == wordx:
-    # print(wordx2)
-# else:
-    # print(wordx1)
+    # if wordx1 == wordx:
+        # print(wordx2)
+    # else:
+        # print(wordx1)
 
-# print(maxscore, wordx1, wordx2)
+    # print(maxscore, wordx1, wordx2)
 
 
 
