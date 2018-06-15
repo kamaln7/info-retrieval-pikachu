@@ -119,10 +119,10 @@ public class HandsOnDemo {
 
 				List<String> query_words = new LinkedList<String>();
 
-				String query = "For colIege admission, is it better to take AP classes and get Bs or easy classes and get As?";
+				String query = "For college admission, is it better to take AP classes and get Bs or easy classes and get As?";
 
-				// delete: ? , . ! "
-				query = query.replaceAll("[\\?,\\.!\"]*$", "");
+				// delete: ? , . ! " ^
+				query = query.replaceAll("[\\?,\\.!\"\\^]*$", "");
 
 				for (String word : query.split("\\s+")) {
 					query_words.add(word);
@@ -140,9 +140,11 @@ public class HandsOnDemo {
 				String new_query = query_words.stream().map((x) -> String.format("body:%s", x))
 						.collect(Collectors.joining(" "));
 
+				System.out.printf("Original Query: %s\n", query);
+				System.out.printf("Modified Query: %s\n", new_query);
+
 				final Query q = qp.parse(new_query);
-				System.out.println("Query: " + q);
-				System.out.println();
+				System.out.printf("Parsed Query: %s\n\n", q);
 
 				final IndexSearcher searcher = new IndexSearcher(reader);
 				searcher.setSimilarity(new BM25Similarity());
