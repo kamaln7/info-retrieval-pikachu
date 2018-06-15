@@ -121,7 +121,8 @@ public class HandsOnDemo {
 
 				String query = "For colIege admission, is it better to take AP classes and get Bs or easy classes and get As?";
 
-				query = query.replaceAll("\\?*$", "");
+				// delete: ? , . ! "
+				query = query.replaceAll("[\\?,\\.!\"]*$", "");
 
 				for (String word : query.split("\\s+")) {
 					query_words.add(word);
@@ -134,8 +135,7 @@ public class HandsOnDemo {
 					}
 				}
 
-				List<String> synonyms = getSynonyms(query_words);
-				query_words.addAll(synonyms);
+				query_words = addSynonyms(query_words);
 
 				String new_query = query_words.stream().map((x) -> String.format("body:%s", x))
 						.collect(Collectors.joining(" "));
@@ -204,13 +204,25 @@ public class HandsOnDemo {
 		}
 	}
 
-	private static List<String> getSynonyms(List<String> query_words) throws IOException, InterruptedException {
+	private static List<String> addSynonyms(List<String> query_words) throws IOException, InterruptedException {
+		ArrayList<String> result = new ArrayList<String>();
+
+		for (String word : query_words) {
+			result.add(word);
+			List<String> synonyms = getSynonyms(word);
+			result.addAll(synonyms);
+		}
+
+		return result;
+	}
+
+	private static List<String> getSynonyms(String word) throws IOException, InterruptedException {
 		ArrayList<String> synonyms = new ArrayList<String>();
 
 		ArrayList<String> argsList = new ArrayList<String>();
 		argsList.add("/usr/local/python3");
 		argsList.add("../scripts/syn.py");
-		argsList.addAll(query_words);
+		argsList.add(word);
 
 		String[] argsArr = new String[argsList.size()];
 		argsArr = argsList.toArray(argsArr);
