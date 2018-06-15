@@ -9,8 +9,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.apache.lucene.analysis.Analyzer;
@@ -47,7 +49,15 @@ public class HandsOnDemo {
 	private static final String BODY_FIELD = "body";
 	private static final String[] WH_STOP_WORDS = { "how", "what", "where", "who", "when", "which", "whom", "whose",
 			"why", "do" };
-	private static final String path = "../scripts/corpus_answers.txt";
+	private static final Map<String, List<String>> synonyms = new HashMap<String, List<String>>() {
+		private static final long serialVersionUID = 1L;
+
+		{
+			put("why", Arrays.asList(new String[] { "because", "coz", "cuz" }));
+			put("when", Arrays.asList(new String[] { "at" }));
+			put("which", Arrays.asList(new String[] { "one" }));
+		}
+	};
 	private static final String nfL6path = "../scripts/nfL6.json";
 	private static final FieldType TERM_VECTOR_TYPE;
 	static {
@@ -111,32 +121,16 @@ public class HandsOnDemo {
 
 				String query = "For colIege admission, is it better to take AP classes and get Bs or easy classes and get As?";
 
-				if (query.charAt(query.length() - 1) == '?') {
-					query = query.substring(0, query.length() - 1);
-				}
+				query = query.replaceAll("\\?*$", "");
 
-				String[] query_words_array = query.split("\\s+");
+				for (String word : query.split("\\s+")) {
+					query_words.add(word);
 
-				for (int i = 0; i < query_words_array.length; i++) {
-					query_words.add(query_words_array[i]);
-				}
-
-				for (int i = 0; i < query_words.size(); i++) {
-					if (query_words.get(i).toLowerCase().equals("why")) {
-						query_words.add(i, "because");
-						i++;
-						query_words.add(i, "coz");
-						i++;
-						query_words.add(i, "cuz");
-						i++;
-					}
-					if (query_words.get(i).toLowerCase().equals("when")) {
-						query_words.add(i, "at");
-						i++;
-					}
-					if (query_words.get(i).toLowerCase().equals("which")) {
-						query_words.add(i, "one");
-						i++;
+					String synKey = word.toLowerCase();
+					if (synonyms.containsKey(synKey)) {
+						for (String synonym : synonyms.get(synKey)) {
+							query_words.add(synonym);
+						}
 					}
 				}
 
