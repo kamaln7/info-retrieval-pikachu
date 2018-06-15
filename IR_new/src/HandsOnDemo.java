@@ -210,15 +210,16 @@ public class HandsOnDemo {
 		ArrayList<String> result = new ArrayList<String>();
 
 		for (String word : query_words) {
-			result.add(word);
+			result.add(String.format("%s^2", word));
 			List<String> synonyms = getSynonyms(word);
 
 			// replace underscores with spaces and quote each phrase
-			// result.addAll(synonyms.stream().map((x) -> String.format("\"%s\"",
-			// x.replace('_', ' '))).collect(Collectors.toList()));
+			// give priority to original query ^2 above
+			result.addAll(synonyms.stream().map((x) -> String.format("\"%s\"", x.replace('_', ' ')))
+					.collect(Collectors.toList()));
 
 			// add synonym as-is
-			result.addAll(synonyms);
+			// result.addAll(synonyms);
 		}
 
 		return result;
