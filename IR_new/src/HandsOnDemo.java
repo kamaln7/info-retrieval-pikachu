@@ -58,6 +58,11 @@ public class HandsOnDemo {
 
 	private static Path cacheDirPath = new File("./cache/index").toPath();
 
+	private static IndexWriterConfig newIndexWriterConfig(Analyzer analyzer) {
+		return new IndexWriterConfig(analyzer).setOpenMode(OpenMode.CREATE).setCodec(new SimpleTextCodec())
+				.setCommitOnClose(true);
+	}
+
 	public static void buildIndex(Directory dir, Analyzer analyzer) throws IOException {
 		// parse json
 		Gson gson = new Gson();
@@ -242,10 +247,5 @@ public class HandsOnDemo {
 
 	private static Analyzer newAnalyzer() {
 		return new EnglishAnalyzer();
-	}
-
-	private static IndexWriterConfig newIndexWriterConfig(Analyzer analyzer) {
-		return new IndexWriterConfig(analyzer).setOpenMode(OpenMode.CREATE).setCodec(new SimpleTextCodec())
-				.setCommitOnClose(true);
 	}
 }
