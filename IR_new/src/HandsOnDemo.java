@@ -117,7 +117,7 @@ public class HandsOnDemo {
 			try (DirectoryReader reader = DirectoryReader.open(dir)) {
 				final QueryParser qp = new QueryParser(BODY_FIELD, analyzer);
 
-				final List<String> query_words = new LinkedList<String>();
+				List<String> query_words = new LinkedList<String>();
 
 				String query = "For colIege admission, is it better to take AP classes and get Bs or easy classes and get As?";
 
@@ -134,30 +134,11 @@ public class HandsOnDemo {
 					}
 				}
 
-				StringBuilder tmp_new_query = new StringBuilder();
+				List<String> synonyms = getSynonyms(query_words);
+				query_words.addAll(synonyms);
 
-				for (int i = 0; i < query_words.size(); i++) {
-					Runtime rt = Runtime.getRuntime();
-					Process pr = rt.exec("/usr/local/python3 ../scripts/syn.py " + query_words.get(i).toLowerCase());
-					pr.waitFor();
-
-					BufferedReader bfr = new BufferedReader(new InputStreamReader(pr.getInputStream()));
-					String line = "";
-					String word_add = "";
-
-					while ((line = bfr.readLine()) != null) {
-						System.out.println(line);
-						word_add = line;
-					}
-
-					tmp_new_query.append("body: " + query_words.get(i) + " ");
-					if (word_add != "") {
-						StringBuilder add_query = new StringBuilder();
-						add_query.append(" body:" + word_add);
-						tmp_new_query.append("body: " + word_add + " ");
-					}
-				}
-				String new_query = tmp_new_query.toString().trim();
+				String new_query = query_words.stream().map((x) -> String.format("body:%s", x))
+						.collect(Collectors.joining(" "));
 
 				final Query q = qp.parse(new_query);
 				System.out.println("Query: " + q);
@@ -221,6 +202,30 @@ public class HandsOnDemo {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+	}
+
+	private static List<String> getSynonyms(List<String> query_words) throws IOException, InterruptedException {
+		ArrayList<String> synonyms = new ArrayList<String>();
+
+		ArrayList<String> argsList = new ArrayList<String>();
+		argsList.add("/usr/local/python3");
+		argsList.add("../scripts/syn.py");
+		argsList.addAll(query_words);
+
+		String[] argsArr = new String[argsList.size()];
+		argsArr = argsList.toArray(argsArr);
+
+		Runtime rt = Runtime.getRuntime();
+		Process pr = rt.exec(argsArr);
+		pr.waitFor();
+
+		BufferedReader bfr = new BufferedReader(new InputStreamReader(pr.getInputStream()));
+		String line;
+		while ((line = bfr.readLine()) != null) {
+			synonyms.add(line.trim());
+		}
+
+		return synonyms;
 	}
 
 	protected TokenStreamComponents createComponents(String string) {
