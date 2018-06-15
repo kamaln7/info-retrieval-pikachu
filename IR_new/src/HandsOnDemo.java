@@ -1,21 +1,3 @@
-
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required byOCP applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -23,6 +5,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -54,15 +38,14 @@ import org.apache.lucene.store.FSDirectory;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.stream.JsonReader;
 
 public class HandsOnDemo {
 	private static final String BODY_FIELD = "body";
-
 	private static final String[] WH_STOP_WORDS = { "how", "what", "where", "who", "when", "which", "whom", "whose",
 			"why", "do" };
-
 	private static final String path = "../scripts/corpus_answers.txt";
-
+	private static final String nfL6path = "../scripts/nfL6.json";
 	private static final FieldType TERM_VECTOR_TYPE;
 	static {
 		TERM_VECTOR_TYPE = new FieldType(TextField.TYPE_STORED);
@@ -72,24 +55,38 @@ public class HandsOnDemo {
 		TERM_VECTOR_TYPE.freeze();
 	}
 
-	public static void main(String[] args) throws Exception {
+	private static Path cacheDirPath = new File("./cache/index").toPath();
 
+	public static void buildIndex(Directory dir, Analyzer analyzer) throws IOException {
+		// parse json
 		Gson gson = new Gson();
+		nfL6Entry[] entries;
+		try (JsonReader nfL6Reader = new JsonReader(new FileReader(nfL6path))) {
+			entries = gson.fromJson(nfL6Reader, nfL6Entry[].class);
+		}
 
-		// parse Json file
-		// Data[] data = gson.fromJson(bufferedReader, Data[].class);
+		// build index
+		try (IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(analyzer))) {
+			for (nfL6Entry entry : entries) {
+				ArrayList<String> answers = new ArrayList<String>();
+				answers.addAll(entry.NBestAnswers);
 
-		try (Directory dir = newDirectory(); Analyzer analyzer = newAnalyzer()) {
-			// Index
-			try (IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(analyzer))) {
-				try (BufferedReader br = new BufferedReader(new FileReader(path))) {
-					String answer;
-					while ((answer = br.readLine()) != null) {
-						final Document doc = new Document();
-						doc.add(new TextField("body", answer, Store.YES));
-						writer.addDocument(doc);
-					}
+				for (String answer : answers) {
+					Document doc = new Document();
+					doc.add(new TextField("body", answer, Store.YES));
+					writer.addDocument(doc);
 				}
+			}
+		}
+	}
+
+	public static void main(String[] args) throws Exception {
+		try {
+			Directory dir = FSDirectory.open(cacheDirPath);
+			Analyzer analyzer = newAnalyzer();
+			// Index
+			if (Files.notExists(cacheDirPath)) {
+				buildIndex(dir, analyzer);
 			}
 
 			// Search
@@ -199,7 +196,7 @@ public class HandsOnDemo {
 					if (count == 4) {
 						answer_list.add(answer1);
 						big_answer.setAnswers(answer_list);
-						gson = new GsonBuilder().setPrettyPrinting().create();
+						Gson gson = new GsonBuilder().setPrettyPrinting().create();
 						String strJson = gson.toJson(big_answer);
 						// System.out.println(String.format("doc=%d, score=%.4f, text=%s snippet=%s",
 						// sd.doc, sd.score,
@@ -226,6 +223,8 @@ public class HandsOnDemo {
 
 				// String[] most_freq_words = countMostFreqWord();
 			}
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
 
@@ -238,10 +237,6 @@ public class HandsOnDemo {
 	 * 
 	 * } } }
 	 */
-
-	private static Directory newDirectory() throws IOException {
-		return FSDirectory.open(new File("d:/tmp/ir-class/demo").toPath());
-	}
 
 	protected TokenStreamComponents createComponents(String string) {
 		throw new UnsupportedOperationException("Not supported yet."); // To change body of generated methods, choose
