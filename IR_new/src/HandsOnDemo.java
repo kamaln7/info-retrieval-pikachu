@@ -210,6 +210,12 @@ public class HandsOnDemo {
 		for (String word : query_words) {
 			result.add(word);
 			List<String> synonyms = getSynonyms(word);
+
+			// replace underscores with spaces and quote each phrase
+			// result.addAll(synonyms.stream().map((x) -> String.format("\"%s\"",
+			// x.replace('_', ' '))).collect(Collectors.toList()));
+
+			// add synonym as-is
 			result.addAll(synonyms);
 		}
 
