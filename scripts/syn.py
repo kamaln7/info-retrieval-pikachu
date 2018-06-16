@@ -2,6 +2,7 @@ from itertools import chain
 from nltk.corpus import wordnet
 from itertools import product
 import sys
+import json
 
 # print("Hello World from python")
 
@@ -18,9 +19,11 @@ import sys
 #        s = wordFromList1[0].wup_similarity(wordFromList2[0])
 #        print(s)
 
+output = {}
+
 for wordx in sys.argv[1:]:
-    # wordx = 'european'
-    sem1 = wordnet.synsets(wordx.lower())
+    wordx = wordx.lower()
+    sem1 = wordnet.synsets(wordx)
     flag = 1
     # maxscore = 0.0
     # score = 0.0
@@ -30,9 +33,11 @@ for wordx in sys.argv[1:]:
             break
         for word in ss.lemma_names():
             if word.lower() != wordx:
-                print(word)
+                output[wordx] = {'synonyms': [word]}
                 flag = 0
                 break
+
+print(json.dumps(output))
 
     # sem1 = sem1[0].lemma_names()
     # print(sem1)
