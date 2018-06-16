@@ -1,4 +1,5 @@
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
@@ -27,14 +28,13 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
+import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.similarities.BM25Similarity;
-import org.apache.lucene.search.vectorhighlight.FastVectorHighlighter;
-import org.apache.lucene.search.vectorhighlight.FieldQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 
@@ -60,6 +60,9 @@ public class Pikachu {
 
 	public Directory cacheDirectory;
 	public Analyzer analyzer;
+	public QueryParser qp;
+	public IndexSearcher searcher;
+	public DirectoryReader reader;
 
 	public Pikachu(String nfL6path, Path cacheDirectory, String synPyPath) throws IOException {
 		this.nfL6path = nfL6path;
@@ -67,7 +70,11 @@ public class Pikachu {
 		this.synPyPath = synPyPath;
 
 		this.setAnalyzer();
+		this.qp = new QueryParser(BODY_FIELD, this.analyzer);
 		this.cacheDirectory = FSDirectory.open(cacheDirPath);
+		this.reader = DirectoryReader.open(this.cacheDirectory);
+		this.searcher = new IndexSearcher(reader);
+		searcher.setSimilarity(new BM25Similarity());
 		// Index
 		if (Files.notExists(cacheDirPath)) {
 			buildIndex();
@@ -109,96 +116,82 @@ public class Pikachu {
 	}
 
 	public void Search(String query) throws Exception {
-		try {
-			// Search
-			try (DirectoryReader reader = DirectoryReader.open(this.cacheDirectory)) {
-				final QueryParser qp = new QueryParser(BODY_FIELD, analyzer);
+		List<String> query_words = new LinkedList<String>();
 
-				List<String> query_words = new LinkedList<String>();
+		// delete: ? , . ! " ^
+		query = query.replaceAll("[\\?,\\.!\"\\^]*$", "");
 
-				// delete: ? , . ! " ^
-				query = query.replaceAll("[\\?,\\.!\"\\^]*$", "");
+		for (String word : query.split("\\s+")) {
+			query_words.add(word);
 
-				for (String word : query.split("\\s+")) {
-					query_words.add(word);
-
-					String synKey = word.toLowerCase();
-					if (hardcodedSynonyms.containsKey(synKey)) {
-						for (String synonym : hardcodedSynonyms.get(synKey)) {
-							query_words.add(synonym);
-						}
-					}
+			String synKey = word.toLowerCase();
+			if (hardcodedSynonyms.containsKey(synKey)) {
+				for (String synonym : hardcodedSynonyms.get(synKey)) {
+					query_words.add(synonym);
 				}
-
-				query_words = addSynonyms(query_words);
-
-				String new_query = query_words.stream().map((x) -> String.format("body:%s", x))
-						.collect(Collectors.joining(" "));
-
-				System.out.printf("Original Query: %s\n", query);
-				System.out.printf("Modified Query: %s\n", new_query);
-
-				final Query q = qp.parse(new_query);
-				System.out.printf("Parsed Query: %s\n\n", q);
-
-				final IndexSearcher searcher = new IndexSearcher(reader);
-				searcher.setSimilarity(new BM25Similarity());
-				final TopDocs td = searcher.search(q, 300);
-
-				ArrayList<Answer> answer_list = new ArrayList<Answer>();
-				Answers big_answer = new Answers();
-
-				final FastVectorHighlighter highlighter = new FastVectorHighlighter();
-				final FieldQuery fieldQuery = highlighter.getFieldQuery(q, reader);
-
-				int count = 0;
-				int count_300 = 0;
-
-				PrintStream out = new PrintStream(new FileOutputStream("../scripts/top_300_answers.txt"));
-
-				for (final ScoreDoc sd : td.scoreDocs) {
-					Answer answer1 = new Answer();
-
-					final String[] snippets = highlighter.getBestFragments(fieldQuery, reader, sd.doc, BODY_FIELD, 100,
-							3);
-					final Document doc = searcher.doc(sd.doc);
-
-					answer1.setAnswer(doc.get(BODY_FIELD));
-					answer1.setScore(sd.score);
-
-					if (count == 4) {
-						answer_list.add(answer1);
-						big_answer.setAnswers(answer_list);
-						Gson gson = new GsonBuilder().setPrettyPrinting().create();
-						String strJson = gson.toJson(big_answer);
-						// System.out.println(String.format("doc=%d, score=%.4f, text=%s snippet=%s",
-						// sd.doc, sd.score,
-						// doc.get(BODY_FIELD), Arrays.stream(snippets).collect(Collectors.joining("
-						// "))));
-
-						System.out.println(strJson);
-						// break;
-					}
-
-					answer_list.add(answer1);
-					count++;
-
-					if (count_300 < 300) {
-						out.println(doc.get(BODY_FIELD));
-						count_300++;
-
-						if (count_300 < 50) {
-							System.out.println(String.format("doc=%d, score=%.4f, text=%s snippet=%s", sd.doc, sd.score,
-									doc.get(BODY_FIELD), Arrays.stream(snippets).collect(Collectors.joining(" "))));
-						}
-					}
-				} // end of top-docs 3
-
-				// String[] most_freq_words = countMostFreqWord();
 			}
-		} catch (Exception e) {
-			e.printStackTrace();
 		}
+
+		query_words = addSynonyms(query_words);
+
+		String new_query = query_words.stream().map((x) -> String.format("body:%s", x))
+				.collect(Collectors.joining(" "));
+
+		System.out.printf("Original Query: %s\n", query);
+		System.out.printf("Modified Query: %s\n", new_query);
+
+		runQuery(new_query);
+	}
+
+	void runQuery(String query) throws ParseException, IOException, FileNotFoundException {
+		Query q = this.qp.parse(query);
+		System.out.printf("Parsed Query: %s\n\n", q);
+
+		TopDocs td = searcher.search(q, 300);
+
+		ArrayList<Answer> answer_list = new ArrayList<Answer>();
+		Answers big_answer = new Answers();
+
+		int count = 0;
+		int count_300 = 0;
+
+		PrintStream out = new PrintStream(new FileOutputStream("../scripts/top_300_answers.txt"));
+		for (ScoreDoc sd : td.scoreDocs) {
+			Document doc = searcher.doc(sd.doc);
+
+			Answer answer = new Answer();
+			answer.setAnswer(doc.get(BODY_FIELD));
+			answer.setScore(sd.score);
+
+			if (count == 4) {
+				answer_list.add(answer);
+				big_answer.setAnswers(answer_list);
+				Gson gson = new GsonBuilder().setPrettyPrinting().create();
+				String strJson = gson.toJson(big_answer);
+				// System.out.println(String.format("doc=%d, score=%.4f, text=%s snippet=%s",
+				// sd.doc, sd.score,
+				// doc.get(BODY_FIELD), Arrays.stream(snippets).collect(Collectors.joining("
+				// "))));
+
+				System.out.println(strJson);
+				// break;
+			}
+
+			answer_list.add(answer);
+			count++;
+
+			if (count_300 < 300) {
+				out.println(doc.get(BODY_FIELD));
+				count_300++;
+
+				if (count_300 < 50) {
+					System.out.println(
+							String.format("doc=%d, score=%.4f, text=%s", sd.doc, sd.score, doc.get(BODY_FIELD)));
+				}
+			}
+		} // end of top-docs 3
+
+		// String[] most_freq_words = countMostFreqWord();
 	}
 
 	private List<String> addSynonyms(List<String> query_words) throws IOException, InterruptedException {
