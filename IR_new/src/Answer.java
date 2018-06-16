@@ -2,6 +2,6 @@ public class Answer {
 
 	public String answer;
 	public Float score;
-	public Integer doc;
+	public transient Integer doc;
 
 }

@@ -115,7 +115,7 @@ public class Pikachu {
 		}
 	}
 
-	public void Search(String originalQuery) throws Exception {
+	public List<Answer> Search(String originalQuery) throws Exception {
 		String query = originalQuery;
 		System.out.printf("Original Query: %s\n", query);
 		List<String> query_words = new LinkedList<String>();
@@ -177,6 +177,8 @@ public class Pikachu {
 		answers.stream().limit(5).forEach((a) -> {
 			System.out.printf("doc=%d, score=%.4f, text=%s\n", a.doc, a.score, a.answer);
 		});
+
+		return answers;
 	}
 
 	public String cleanQuery(String query) {
