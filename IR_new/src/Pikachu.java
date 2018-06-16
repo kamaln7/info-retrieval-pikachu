@@ -66,8 +66,8 @@ public class Pikachu {
 		this.cacheDirPath = cacheDirectory;
 		this.synPyPath = synPyPath;
 
+		this.setAnalyzer();
 		this.cacheDirectory = FSDirectory.open(cacheDirPath);
-		this.analyzer = newAnalyzer();
 		// Index
 		if (Files.notExists(cacheDirPath)) {
 			buildIndex();
@@ -224,7 +224,7 @@ public class Pikachu {
 	private Map<String, List<String>> getSynonyms(List<String> words) throws IOException, InterruptedException {
 		ArrayList<String> argsList = new ArrayList<String>();
 		argsList.add("/usr/local/python3");
-		argsList.add("../scripts/syn.py");
+		argsList.add(this.synPyPath);
 		argsList.addAll(words);
 
 		String[] argsArr = new String[argsList.size()];
@@ -249,12 +249,12 @@ public class Pikachu {
 		return synonyms;
 	}
 
-	private Analyzer newAnalyzer() {
+	public void setAnalyzer() {
 		CharArraySet stopWords = CharArraySet.copy(StopAnalyzer.ENGLISH_STOP_WORDS_SET);
 
 		for (String stopWord : WH_STOP_WORDS) {
 			stopWords.add(stopWord.toLowerCase());
 		}
-		return new EnglishAnalyzer(stopWords);
+		this.analyzer = new EnglishAnalyzer(stopWords);
 	}
 }
