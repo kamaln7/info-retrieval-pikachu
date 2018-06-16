@@ -19,7 +19,7 @@ import json
 #        s = wordFromList1[0].wup_similarity(wordFromList2[0])
 #        print(s)
 
-output = {}
+output = []
 
 for wordx in sys.argv[1:]:
     wordx = wordx.lower()
@@ -33,7 +33,10 @@ for wordx in sys.argv[1:]:
             break
         for word in ss.lemma_names():
             if word.lower() != wordx:
-                output[wordx] = {'synonyms': [word]}
+                output.append({
+                    'word': wordx,
+                    'synonyms': [word],
+                })
                 flag = 0
                 break
 

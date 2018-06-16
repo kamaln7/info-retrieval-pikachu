@@ -1,4 +1,3 @@
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
@@ -49,7 +48,7 @@ public class HandsOnDemo {
 	private static final String BODY_FIELD = "body";
 	private static final String[] WH_STOP_WORDS = { "how", "what", "where", "who", "when", "which", "whom", "whose",
 			"why", "do" };
-	private static final Map<String, List<String>> synonyms = new HashMap<String, List<String>>() {
+	private static final Map<String, List<String>> hardcodedSynonyms = new HashMap<String, List<String>>() {
 		private static final long serialVersionUID = 1L;
 
 		{
@@ -128,8 +127,8 @@ public class HandsOnDemo {
 					query_words.add(word);
 
 					String synKey = word.toLowerCase();
-					if (synonyms.containsKey(synKey)) {
-						for (String synonym : synonyms.get(synKey)) {
+					if (hardcodedSynonyms.containsKey(synKey)) {
+						for (String synonym : hardcodedSynonyms.get(synKey)) {
 							query_words.add(synonym);
 						}
 					}
@@ -209,29 +208,28 @@ public class HandsOnDemo {
 	private static List<String> addSynonyms(List<String> query_words) throws IOException, InterruptedException {
 		ArrayList<String> result = new ArrayList<String>();
 
+		Map<String, List<String>> allSynonyms = getSynonyms(query_words);
+
 		for (String word : query_words) {
 			result.add(String.format("%s^2", word));
-			List<String> synonyms = getSynonyms(word);
 
-			// replace underscores with spaces and quote each phrase
-			// give priority to original query ^2 above
-			result.addAll(synonyms.stream().map((x) -> String.format("\"%s\"", x.replace('_', ' ')))
-					.collect(Collectors.toList()));
-
-			// add synonym as-is
-			// result.addAll(synonyms);
+			String key = word.toLowerCase();
+			if (allSynonyms.containsKey(key)) {
+				// replace underscores with spaces and quote each phrase
+				// give priority to original query ^2 above
+				result.addAll(allSynonyms.get(key).stream().map((x) -> String.format("\"%s\"", x.replace('_', ' ')))
+						.collect(Collectors.toList()));
+			}
 		}
 
 		return result;
 	}
 
-	private static List<String> getSynonyms(String word) throws IOException, InterruptedException {
-		ArrayList<String> synonyms = new ArrayList<String>();
-
+	private static Map<String, List<String>> getSynonyms(List<String> words) throws IOException, InterruptedException {
 		ArrayList<String> argsList = new ArrayList<String>();
 		argsList.add("/usr/local/python3");
 		argsList.add("../scripts/syn.py");
-		argsList.add(word);
+		argsList.addAll(words);
 
 		String[] argsArr = new String[argsList.size()];
 		argsArr = argsList.toArray(argsArr);
@@ -240,10 +238,16 @@ public class HandsOnDemo {
 		Process pr = rt.exec(argsArr);
 		pr.waitFor();
 
-		BufferedReader bfr = new BufferedReader(new InputStreamReader(pr.getInputStream()));
-		String line;
-		while ((line = bfr.readLine()) != null) {
-			synonyms.add(line.trim());
+		Gson gson = new Gson();
+		SynPyResult[] results;
+		try (JsonReader synPyReader = new JsonReader(new InputStreamReader(pr.getInputStream()))) {
+			results = gson.fromJson(synPyReader, SynPyResult[].class);
+		}
+
+		Map<String, List<String>> synonyms = new HashMap<String, List<String>>();
+
+		for (SynPyResult synonym : results) {
+			synonyms.put(synonym.word, synonym.synonyms);
 		}
 
 		return synonyms;
