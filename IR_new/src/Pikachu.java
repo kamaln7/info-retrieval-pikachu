@@ -221,7 +221,7 @@ public class Pikachu {
 		System.out.println("getting top 5 answers");
 		TopDocs top5 = this.runQuery(query, 5);
 		List<Answer> answers = this.formatToAnswers(top5);
-		answers.stream().limit(5).forEach((a) -> {
+		answers.stream().distinct().limit(5).forEach((a) -> {
 			System.out.printf("doc=%d, score=%.4f, text=%s\n", a.doc, a.score, a.answer);
 		});
 
