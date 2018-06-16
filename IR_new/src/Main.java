@@ -11,19 +11,25 @@ import java.util.stream.Stream;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.LongSerializationPolicy;
 
 public class Main {
 
 	private static void printAsJSON(List<Question> questions) {
-		Answers answers = new Answers();
+
+		ArrayList<Answers> answersList = new ArrayList<Answers>();
 
 		for (Question q : questions) {
+			Answers answers = new Answers();
 			answers.answers = q.answers;
 			answers.id = q.id;
+			answersList.add(answers);
 		}
 
-		Gson gson = new GsonBuilder().setPrettyPrinting().create();
-		System.err.println(gson.toJson(answers));
+		Gson gson = new GsonBuilder().setPrettyPrinting().setLongSerializationPolicy(LongSerializationPolicy.STRING)
+				.create();
+
+		System.err.println(gson.toJson(answersList));
 	}
 
 	private static ArrayList<Question> readQuestions(String filePath) throws IOException {
