@@ -69,6 +69,7 @@ public class Pikachu {
 		this.cacheDirPath = cacheDirectory;
 		this.synPyPath = synPyPath;
 
+		System.out.println("Starting lucene");
 		this.setAnalyzer();
 		this.qp = new QueryParser(BODY_FIELD, this.analyzer);
 		this.cacheDirectory = FSDirectory.open(cacheDirPath);
@@ -87,14 +88,17 @@ public class Pikachu {
 	}
 
 	public void buildIndex() throws IOException {
+		System.out.println("building index");
 		// parse json
 		Gson gson = new Gson();
 		nfL6Entry[] entries;
+		System.out.println("reading nfL6.json");
 		try (JsonReader nfL6Reader = new JsonReader(new FileReader(nfL6path))) {
 			entries = gson.fromJson(nfL6Reader, nfL6Entry[].class);
 		}
 
 		// build index
+		System.out.println("writing index");
 		try (IndexWriter writer = new IndexWriter(this.cacheDirectory, newIndexWriterConfig(this.analyzer))) {
 			for (nfL6Entry entry : entries) {
 				ArrayList<String> answers = new ArrayList<String>();
@@ -120,14 +124,15 @@ public class Pikachu {
 		System.out.printf("Original Query: %s\n", query);
 		List<String> query_words = new LinkedList<String>();
 
-		// delete: ? , . ! " ^
+		// keep only alphanumeric chars
 		query = this.cleanQuery(query);
 
 		for (String word : query.split("\\s+")) {
 			query_words.add(word);
 
 			String synKey = word.toLowerCase();
-			if (hardcodedSynonyms.containsKey(synKey)) {
+			// TODO: fix this
+			if (false && hardcodedSynonyms.containsKey(synKey)) {
 				for (String synonym : hardcodedSynonyms.get(synKey)) {
 					query_words.add(synonym);
 				}
@@ -182,7 +187,8 @@ public class Pikachu {
 	}
 
 	public String cleanQuery(String query) {
-		return query.replaceAll("[\\?,\\.!\"\\^]*$", "");
+		// return query.replaceAll("[\\?,\\.!\"\\^]$", "");
+		return query.replaceAll("[^A-Za-z0-9\\s]", "");
 	}
 
 	TopDocs runQuery(String query, Integer count) throws ParseException, IOException, FileNotFoundException {
