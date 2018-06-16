@@ -147,14 +147,14 @@ public class Pikachu {
 		Map<String, Integer> wordCount = new HashMap<String, Integer>();
 		for (ScoreDoc sd : top300.scoreDocs) {
 			Document doc = searcher.doc(sd.doc);
-			String answer = doc.get(BODY_FIELD);
+			String answer = this.cleanQuery(doc.get(BODY_FIELD));
 
 			// TokenStream tokens = this.analyzer.tokenStream("", answer);
 
 			for (String word : answer.split("\\s+")) {
-				String key = this.cleanQuery(word);
+				String key = word.toLowerCase();
 
-				if (!this.stopWords.contains(key.toLowerCase())) {
+				if (!this.stopWords.contains(key)) {
 					Integer count = wordCount.getOrDefault(key, 0);
 					count++;
 					wordCount.put(key, count);
