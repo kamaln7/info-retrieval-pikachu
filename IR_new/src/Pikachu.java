@@ -15,14 +15,12 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.Analyzer.TokenStreamComponents;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.core.StopAnalyzer;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.codecs.simpletext.SimpleTextCodec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
-import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
@@ -44,12 +42,12 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.stream.JsonReader;
 
-public class HandsOnDemo {
-	private static final String BODY_FIELD = "body";
-	private static final String[] WH_STOP_WORDS = { "how", "what", "where", "who", "when", "which", "whom", "whose",
+public class Pikachu {
+	public static final String BODY_FIELD = "body";
+	public static final String[] WH_STOP_WORDS = { "how", "what", "where", "who", "when", "which", "whom", "whose",
 			"why", "do" };
-	private static final Map<String, List<String>> hardcodedSynonyms = new HashMap<String, List<String>>() {
-		private static final long serialVersionUID = 1L;
+	public static final Map<String, List<String>> hardcodedSynonyms = new HashMap<String, List<String>>() {
+		public static final long serialVersionUID = 1L;
 
 		{
 			put("why", Arrays.asList(new String[] { "because", "coz", "cuz" }));
@@ -57,24 +55,31 @@ public class HandsOnDemo {
 			put("which", Arrays.asList(new String[] { "one" }));
 		}
 	};
-	private static final String nfL6path = "../scripts/nfL6.json";
-	private static final FieldType TERM_VECTOR_TYPE;
-	static {
-		TERM_VECTOR_TYPE = new FieldType(TextField.TYPE_STORED);
-		TERM_VECTOR_TYPE.setStoreTermVectors(true);
-		TERM_VECTOR_TYPE.setStoreTermVectorPositions(true);
-		TERM_VECTOR_TYPE.setStoreTermVectorOffsets(true);
-		TERM_VECTOR_TYPE.freeze();
+	public String nfL6path, synPyPath;
+	public Path cacheDirPath = new File("./cache/index").toPath();
+
+	public Directory cacheDirectory;
+	public Analyzer analyzer;
+
+	public Pikachu(String nfL6path, Path cacheDirectory, String synPyPath) throws IOException {
+		this.nfL6path = nfL6path;
+		this.cacheDirPath = cacheDirectory;
+		this.synPyPath = synPyPath;
+
+		this.cacheDirectory = FSDirectory.open(cacheDirPath);
+		this.analyzer = newAnalyzer();
+		// Index
+		if (Files.notExists(cacheDirPath)) {
+			buildIndex();
+		}
 	}
 
-	private static Path cacheDirPath = new File("./cache/index").toPath();
-
-	private static IndexWriterConfig newIndexWriterConfig(Analyzer analyzer) {
+	private IndexWriterConfig newIndexWriterConfig(Analyzer analyzer) {
 		return new IndexWriterConfig(analyzer).setOpenMode(OpenMode.CREATE).setCodec(new SimpleTextCodec())
 				.setCommitOnClose(true);
 	}
 
-	public static void buildIndex(Directory dir, Analyzer analyzer) throws IOException {
+	public void buildIndex() throws IOException {
 		// parse json
 		Gson gson = new Gson();
 		nfL6Entry[] entries;
@@ -83,7 +88,7 @@ public class HandsOnDemo {
 		}
 
 		// build index
-		try (IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(analyzer))) {
+		try (IndexWriter writer = new IndexWriter(this.cacheDirectory, newIndexWriterConfig(this.analyzer))) {
 			for (nfL6Entry entry : entries) {
 				ArrayList<String> answers = new ArrayList<String>();
 				answers.addAll(entry.NBestAnswers);
@@ -103,22 +108,13 @@ public class HandsOnDemo {
 		}
 	}
 
-	public static void main(String[] args) throws Exception {
+	public void Search(String query) throws Exception {
 		try {
-			Directory dir = FSDirectory.open(cacheDirPath);
-			Analyzer analyzer = newAnalyzer();
-			// Index
-			if (Files.notExists(cacheDirPath)) {
-				buildIndex(dir, analyzer);
-			}
-
 			// Search
-			try (DirectoryReader reader = DirectoryReader.open(dir)) {
+			try (DirectoryReader reader = DirectoryReader.open(this.cacheDirectory)) {
 				final QueryParser qp = new QueryParser(BODY_FIELD, analyzer);
 
 				List<String> query_words = new LinkedList<String>();
-
-				String query = "For college admission, is it better to take AP classes and get Bs or easy classes and get As?";
 
 				// delete: ? , . ! " ^
 				query = query.replaceAll("[\\?,\\.!\"\\^]*$", "");
@@ -205,7 +201,7 @@ public class HandsOnDemo {
 		}
 	}
 
-	private static List<String> addSynonyms(List<String> query_words) throws IOException, InterruptedException {
+	private List<String> addSynonyms(List<String> query_words) throws IOException, InterruptedException {
 		ArrayList<String> result = new ArrayList<String>();
 
 		Map<String, List<String>> allSynonyms = getSynonyms(query_words);
@@ -225,7 +221,7 @@ public class HandsOnDemo {
 		return result;
 	}
 
-	private static Map<String, List<String>> getSynonyms(List<String> words) throws IOException, InterruptedException {
+	private Map<String, List<String>> getSynonyms(List<String> words) throws IOException, InterruptedException {
 		ArrayList<String> argsList = new ArrayList<String>();
 		argsList.add("/usr/local/python3");
 		argsList.add("../scripts/syn.py");
@@ -253,12 +249,7 @@ public class HandsOnDemo {
 		return synonyms;
 	}
 
-	protected TokenStreamComponents createComponents(String string) {
-		throw new UnsupportedOperationException("Not supported yet."); // To change body of generated methods, choose
-																		// Tools | Templates.
-	}
-
-	private static Analyzer newAnalyzer() {
+	private Analyzer newAnalyzer() {
 		CharArraySet stopWords = CharArraySet.copy(StopAnalyzer.ENGLISH_STOP_WORDS_SET);
 
 		for (String stopWord : WH_STOP_WORDS) {
