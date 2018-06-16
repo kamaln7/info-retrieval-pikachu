@@ -3,11 +3,11 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +40,8 @@ import org.apache.lucene.store.FSDirectory;
 
 import com.google.gson.Gson;
 import com.google.gson.stream.JsonReader;
+import com.sangupta.bloomfilter.BloomFilter;
+import com.sangupta.bloomfilter.impl.InMemoryBloomFilter;
 
 public class Pikachu {
 	public static final String BODY_FIELD = "body";
@@ -62,6 +64,7 @@ public class Pikachu {
 	public QueryParser qp;
 	public IndexSearcher searcher;
 	public DirectoryReader reader;
+	public BloomFilter<String> bloomFilter;
 
 	public Pikachu(String nfL6path, Path cacheDirectory, String synPyPath) throws IOException {
 		this.nfL6path = nfL6path;
@@ -72,13 +75,11 @@ public class Pikachu {
 		this.setAnalyzer();
 		this.qp = new QueryParser(BODY_FIELD, this.analyzer);
 		this.cacheDirectory = FSDirectory.open(cacheDirPath);
+		// Index
+		buildIndex();
 		this.reader = DirectoryReader.open(this.cacheDirectory);
 		this.searcher = new IndexSearcher(reader);
-		searcher.setSimilarity(new BM25Similarity());
-		// Index
-		if (Files.notExists(cacheDirPath)) {
-			buildIndex();
-		}
+		this.searcher.setSimilarity(new BM25Similarity());
 	}
 
 	private IndexWriterConfig newIndexWriterConfig(Analyzer analyzer) {
@@ -96,26 +97,64 @@ public class Pikachu {
 			entries = gson.fromJson(nfL6Reader, nfL6Entry[].class);
 		}
 
+		HashSet<String> tokenDictionary = new HashSet<String>();
+		for (nfL6Entry entry : entries) {
+			for (String answer : entry.NBestAnswers) {
+				TokenStream ts = this.analyzer.tokenStream(null, answer);
+				ts.reset();
+				while (ts.incrementToken()) {
+					tokenDictionary.add(ts.getAttribute(CharTermAttribute.class).toString().toLowerCase());
+				}
+				ts.close();
+			}
+		}
+
 		// build index
-		System.out.println("writing index");
-		try (IndexWriter writer = new IndexWriter(this.cacheDirectory, newIndexWriterConfig(this.analyzer))) {
-			for (nfL6Entry entry : entries) {
-				ArrayList<String> answers = new ArrayList<String>();
-				answers.addAll(entry.NBestAnswers);
+		try {
+			DirectoryReader.open(this.cacheDirectory);
+		} catch (org.apache.lucene.index.IndexNotFoundException e) {
+			System.out.println("writing index");
+			try (IndexWriter writer = new IndexWriter(this.cacheDirectory, newIndexWriterConfig(this.analyzer))) {
+				for (nfL6Entry entry : entries) {
+					for (String answer : entry.NBestAnswers) {
+						Document doc = new Document();
 
-				for (String answer : answers) {
-					Document doc = new Document();
+						// THIS IS NOT INDEXED!
+						// StoredField: Stored-only value for retrieving in summary results
+						// we only store the question ID in case we need to use it later
+						doc.add(new StoredField("questionID", entry.ID));
 
-					// THIS IS NOT INDEXED!
-					// StoredField: Stored-only value for retrieving in summary results
-					// we only store the question ID in case we need to use it later
-					doc.add(new StoredField("questionID", entry.ID));
-
-					doc.add(new TextField(BODY_FIELD, answer, Store.YES));
-					writer.addDocument(doc);
+						doc.add(new TextField(BODY_FIELD, answer, Store.YES));
+						writer.addDocument(doc);
+					}
 				}
 			}
 		}
+
+		System.out.println("building bloom filter");
+		// this.bloomFilter = new AbstractBloomFilter<String>(tokenDictionary.size(),
+		// 0.1d) {
+		// /**
+		// * Used a {@link FileBackedBitArray} to allow for file persistence.
+		// *
+		// * @returns a {@link BitArray} that will take care of storage of bloom filter
+		// */
+		// @Override
+		// protected BitArray createBitArray(int numBits) {
+		// try {
+		// File file = new File("./cache/bloom.filter");
+		// if (!file.exists()) {
+		// file.createNewFile();
+		// }
+		// return new FileBackedBitArray(file, numBits);
+		// } catch (IOException e) {
+		// e.printStackTrace();
+		// }
+		// return bitArray;
+		// }
+		// };
+		this.bloomFilter = new InMemoryBloomFilter<String>(tokenDictionary.size(), 0.1d);
+		this.bloomFilter.addAll(tokenDictionary);
 	}
 
 	public List<Answer> Search(String originalQuery) throws Exception {
@@ -127,6 +166,10 @@ public class Pikachu {
 		query = this.cleanQuery(query);
 
 		for (String word : query.split("\\s+")) {
+			if (!this.hasAnyToken(word)) {
+				continue;
+			}
+
 			query_words.add(word);
 
 			String synKey = word.toLowerCase();
@@ -183,6 +226,19 @@ public class Pikachu {
 		});
 
 		return answers;
+	}
+
+	public Boolean hasAnyToken(String str) throws IOException {
+		try (TokenStream ts = this.analyzer.tokenStream(null, str)) {
+			ts.reset();
+			while (ts.incrementToken()) {
+				if (this.bloomFilter.contains(ts.getAttribute(CharTermAttribute.class).toString().toLowerCase())) {
+					return true;
+				}
+			}
+		}
+
+		return false;
 	}
 
 	public String cleanQuery(String query) {
@@ -256,7 +312,15 @@ public class Pikachu {
 		Map<String, List<String>> synonyms = new HashMap<String, List<String>>();
 
 		for (SynPyResult synonym : results) {
-			synonyms.put(synonym.word, synonym.synonyms);
+			ArrayList<String> existingSynonyms = new ArrayList<String>();
+
+			for (String s : synonym.synonyms) {
+				if (this.hasAnyToken(s)) {
+					existingSynonyms.add(s);
+				}
+			}
+
+			synonyms.put(synonym.word, existingSynonyms);
 		}
 
 		return synonyms;
