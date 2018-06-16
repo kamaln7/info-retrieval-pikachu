@@ -62,7 +62,6 @@ public class Pikachu {
 	public QueryParser qp;
 	public IndexSearcher searcher;
 	public DirectoryReader reader;
-	private CharArraySet stopWords;
 
 	public Pikachu(String nfL6path, Path cacheDirectory, String synPyPath) throws IOException {
 		this.nfL6path = nfL6path;
@@ -270,7 +269,6 @@ public class Pikachu {
 			stopWords.add(stopWord.toLowerCase());
 		}
 
-		this.stopWords = stopWords;
 		this.analyzer = new EnglishAnalyzer(stopWords);
 	}
 }

@@ -36,12 +36,12 @@ public class Main {
 		ArrayList<Question> questions = new ArrayList<Question>();
 		try (Stream<String> stream = Files.lines(Paths.get(filePath))) {
 			stream.forEach((line) -> {
-				ArrayList<String> lineParts = new ArrayList<>(Arrays.asList(line.split("\\s+")));
+				ArrayList<String> lineParts = new ArrayList<>(Arrays.asList(line.split("\t")));
 
 				Question q = new Question();
 				q.id = lineParts.get(0);
 				lineParts.remove(0);
-				q.body = lineParts.stream().collect(Collectors.joining(" "));
+				q.body = lineParts.stream().collect(Collectors.joining("\t"));
 				questions.add(q);
 			});
 		}
