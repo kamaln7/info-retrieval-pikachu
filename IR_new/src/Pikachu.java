@@ -60,6 +60,7 @@ public class Pikachu {
 	public QueryParser qp;
 	public IndexSearcher searcher;
 	public DirectoryReader reader;
+	private CharArraySet stopWords;
 
 	public Pikachu(String nfL6path, Path cacheDirectory, String synPyPath) throws IOException {
 		this.nfL6path = nfL6path;
@@ -112,11 +113,13 @@ public class Pikachu {
 		}
 	}
 
-	public void Search(String query) throws Exception {
+	public void Search(String originalQuery) throws Exception {
+		String query = originalQuery;
+		System.out.printf("Original Query: %s\n", query);
 		List<String> query_words = new LinkedList<String>();
 
 		// delete: ? , . ! " ^
-		query = query.replaceAll("[\\?,\\.!\"\\^]*$", "");
+		query = this.cleanQuery(query);
 
 		for (String word : query.split("\\s+")) {
 			query_words.add(word);
@@ -131,30 +134,66 @@ public class Pikachu {
 
 		query_words = addSynonyms(query_words);
 
-		String new_query = query_words.stream().map((x) -> String.format("body:%s", x))
-				.collect(Collectors.joining(" "));
+		query = query_words.stream().map((x) -> String.format("body:%s", x)).collect(Collectors.joining(" "));
 
-		System.out.printf("Original Query: %s\n", query);
-		System.out.printf("Modified Query: %s\n", new_query);
+		System.out.printf("Modified Query: %s\n", query);
 
 		// get top 300 answers
-		List<Answer> answers = runQuery(new_query, 300);
+		System.out.println("finding top 300 answers");
+		TopDocs top300 = runQuery(query, 300);
 
-		// print top 5
+		// extract top 5 words from the top 300 answers
+		System.out.println("counting words");
+		Map<String, Integer> wordCount = new HashMap<String, Integer>();
+		for (ScoreDoc sd : top300.scoreDocs) {
+			Document doc = searcher.doc(sd.doc);
+			String answer = doc.get(BODY_FIELD);
+
+			// TokenStream tokens = this.analyzer.tokenStream("", answer);
+
+			for (String word : answer.split("\\s+")) {
+				String key = this.cleanQuery(word);
+
+				if (!this.stopWords.contains(key.toLowerCase())) {
+					Integer count = wordCount.getOrDefault(key, 0);
+					count++;
+					wordCount.put(key, count);
+				}
+			}
+		}
+
+		System.out.println("finding top 5");
+		List<String> top5words = wordCount.entrySet().stream().sorted((e1, e2) -> e2.getValue() - e1.getValue())
+				.limit(5).map((e) -> e.getKey()).collect(Collectors.toList());
+
+		System.out.println("adding top 5 to the query");
+		query = String.format("%s %s", query,
+				top5words.stream().map((x) -> String.format("\"%s\"^2", x)).collect(Collectors.joining(" ")));
+
+		System.out.println("getting top 5 answers");
+		TopDocs top5 = this.runQuery(query, 5);
+		List<Answer> answers = this.formatToAnswers(top5);
 		answers.stream().limit(5).forEach((a) -> {
 			System.out.printf("doc=%d, score=%.4f, text=%s\n", a.doc, a.score, a.answer);
 		});
 	}
 
-	List<Answer> runQuery(String query, Integer count) throws ParseException, IOException, FileNotFoundException {
+	public String cleanQuery(String query) {
+		return query.replaceAll("[\\?,\\.!\"\\^]*$", "");
+	}
+
+	TopDocs runQuery(String query, Integer count) throws ParseException, IOException, FileNotFoundException {
 		Query q = this.qp.parse(query);
-		System.out.printf("Parsed Query: %s\n\n", q);
+		System.out.printf("Parsed Query: %s\n", q);
 
 		TopDocs td = searcher.search(q, count);
+		return td;
+	}
 
+	List<Answer> formatToAnswers(TopDocs docs) throws IOException {
 		ArrayList<Answer> answers = new ArrayList<Answer>();
 
-		for (ScoreDoc sd : td.scoreDocs) {
+		for (ScoreDoc sd : docs.scoreDocs) {
 			Document doc = searcher.doc(sd.doc);
 
 			Answer answer = new Answer();
@@ -173,7 +212,7 @@ public class Pikachu {
 		Map<String, List<String>> allSynonyms = getSynonyms(query_words);
 
 		for (String word : query_words) {
-			result.add(String.format("%s^2", word));
+			result.add(String.format("%s^3", word));
 
 			String key = word.toLowerCase();
 			if (allSynonyms.containsKey(key)) {
@@ -221,6 +260,8 @@ public class Pikachu {
 		for (String stopWord : WH_STOP_WORDS) {
 			stopWords.add(stopWord.toLowerCase());
 		}
+
+		this.stopWords = stopWords;
 		this.analyzer = new EnglishAnalyzer(stopWords);
 	}
 }

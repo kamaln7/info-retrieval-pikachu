@@ -10,6 +10,7 @@ public class Main {
 
 		try {
 			Pikachu pikachu = new Pikachu(nfL6path, cacheDirPath, synPyPath);
+			System.out.println("Starting search");
 			pikachu.Search(query);
 		} catch (Exception e) {
 			e.printStackTrace();
