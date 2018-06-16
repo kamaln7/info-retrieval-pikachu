@@ -1,7 +1,13 @@
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -17,20 +23,33 @@ public class Main {
 		}
 
 		Gson gson = new GsonBuilder().setPrettyPrinting().create();
-		System.out.println(gson.toJson(answers));
+		System.err.println(gson.toJson(answers));
+	}
+
+	private static ArrayList<Question> readQuestions(String filePath) throws IOException {
+		ArrayList<Question> questions = new ArrayList<Question>();
+		try (Stream<String> stream = Files.lines(Paths.get(filePath))) {
+			stream.forEach((line) -> {
+				ArrayList<String> lineParts = new ArrayList<>(Arrays.asList(line.split("\\s+")));
+
+				Question q = new Question();
+				q.id = lineParts.get(0);
+				lineParts.remove(0);
+				q.body = lineParts.stream().collect(Collectors.joining(" "));
+				questions.add(q);
+			});
+		}
+
+		return questions;
 	}
 
 	public static void main(String[] args) {
-		String nfL6path = "../scripts/nfL6.json", synPyPath = "../scripts/syn.py";
+		String nfL6path = "../scripts/nfL6.json", synPyPath = "../scripts/syn.py", questionsPath = "../questions.txt";
 		Path cacheDirPath = new File("./cache/index").toPath();
 
-		ArrayList<Question> questions = new ArrayList<Question>();
-		Question q1 = new Question();
-		q1.id = "123";
-		q1.body = "For college admission, is it better to take AP classes and get Bs or easy classes and get As?";
-		questions.add(q1);
-
 		try {
+			ArrayList<Question> questions = readQuestions(questionsPath);
+
 			Pikachu pikachu = new Pikachu(nfL6path, cacheDirPath, synPyPath);
 			System.out.println("Starting search");
 
