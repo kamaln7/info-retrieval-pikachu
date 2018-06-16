@@ -1,10 +1,10 @@
 
-public class answer {
+public class Answer {
 
 	private String answer;
 	private double score;
 	
-	public answer() {
+	public Answer() {
 		// TODO Auto-generated constructor stub
 	}
 	

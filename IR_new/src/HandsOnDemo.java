@@ -150,8 +150,8 @@ public class HandsOnDemo {
 				searcher.setSimilarity(new BM25Similarity());
 				final TopDocs td = searcher.search(q, 300);
 
-				ArrayList<answer> answer_list = new ArrayList<answer>();
-				answers big_answer = new answers();
+				ArrayList<Answer> answer_list = new ArrayList<Answer>();
+				Answers big_answer = new Answers();
 
 				final FastVectorHighlighter highlighter = new FastVectorHighlighter();
 				final FieldQuery fieldQuery = highlighter.getFieldQuery(q, reader);
@@ -162,7 +162,7 @@ public class HandsOnDemo {
 				PrintStream out = new PrintStream(new FileOutputStream("../scripts/top_300_answers.txt"));
 
 				for (final ScoreDoc sd : td.scoreDocs) {
-					answer answer1 = new answer();
+					Answer answer1 = new Answer();
 
 					final String[] snippets = highlighter.getBestFragments(fieldQuery, reader, sd.doc, BODY_FIELD, 100,
 							3);

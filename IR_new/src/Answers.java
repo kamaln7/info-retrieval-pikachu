@@ -1,10 +1,10 @@
 import java.util.ArrayList;
 
-public class answers {
+public class Answers {
 	private int id;
-	private ArrayList<answer> answers;
+	private ArrayList<Answer> answers;
 	
-	public answers() {
+	public Answers() {
 		// TODO Auto-generated constructor stub
 	}
 
@@ -18,12 +18,12 @@ public class answers {
 		this.id = id;
 	}
 	
-	ArrayList<answer> getAnswers()
+	ArrayList<Answer> getAnswers()
 	{
 		return answers;
 	}
 	
-	void setAnswers(ArrayList<answer> answers)
+	void setAnswers(ArrayList<Answer> answers)
 	{
 		this.answers = answers;
 	}
