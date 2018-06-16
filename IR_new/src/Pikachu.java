@@ -1,10 +1,8 @@
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -39,7 +37,6 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.stream.JsonReader;
 
 public class Pikachu {
@@ -140,58 +137,34 @@ public class Pikachu {
 		System.out.printf("Original Query: %s\n", query);
 		System.out.printf("Modified Query: %s\n", new_query);
 
-		runQuery(new_query);
+		// get top 300 answers
+		List<Answer> answers = runQuery(new_query, 300);
+
+		// print top 5
+		answers.stream().limit(5).forEach((a) -> {
+			System.out.printf("doc=%d, score=%.4f, text=%s\n", a.doc, a.score, a.answer);
+		});
 	}
 
-	void runQuery(String query) throws ParseException, IOException, FileNotFoundException {
+	List<Answer> runQuery(String query, Integer count) throws ParseException, IOException, FileNotFoundException {
 		Query q = this.qp.parse(query);
 		System.out.printf("Parsed Query: %s\n\n", q);
 
-		TopDocs td = searcher.search(q, 300);
+		TopDocs td = searcher.search(q, count);
 
-		ArrayList<Answer> answer_list = new ArrayList<Answer>();
-		Answers big_answer = new Answers();
+		ArrayList<Answer> answers = new ArrayList<Answer>();
 
-		int count = 0;
-		int count_300 = 0;
-
-		PrintStream out = new PrintStream(new FileOutputStream("../scripts/top_300_answers.txt"));
 		for (ScoreDoc sd : td.scoreDocs) {
 			Document doc = searcher.doc(sd.doc);
 
 			Answer answer = new Answer();
-			answer.setAnswer(doc.get(BODY_FIELD));
-			answer.setScore(sd.score);
+			answer.answer = doc.get(BODY_FIELD);
+			answer.score = sd.score;
+			answer.doc = sd.doc;
+			answers.add(answer);
+		}
 
-			if (count == 4) {
-				answer_list.add(answer);
-				big_answer.setAnswers(answer_list);
-				Gson gson = new GsonBuilder().setPrettyPrinting().create();
-				String strJson = gson.toJson(big_answer);
-				// System.out.println(String.format("doc=%d, score=%.4f, text=%s snippet=%s",
-				// sd.doc, sd.score,
-				// doc.get(BODY_FIELD), Arrays.stream(snippets).collect(Collectors.joining("
-				// "))));
-
-				System.out.println(strJson);
-				// break;
-			}
-
-			answer_list.add(answer);
-			count++;
-
-			if (count_300 < 300) {
-				out.println(doc.get(BODY_FIELD));
-				count_300++;
-
-				if (count_300 < 50) {
-					System.out.println(
-							String.format("doc=%d, score=%.4f, text=%s", sd.doc, sd.score, doc.get(BODY_FIELD)));
-				}
-			}
-		} // end of top-docs 3
-
-		// String[] most_freq_words = countMostFreqWord();
+		return answers;
 	}
 
 	private List<String> addSynonyms(List<String> query_words) throws IOException, InterruptedException {
