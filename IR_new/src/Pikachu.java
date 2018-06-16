@@ -15,8 +15,10 @@ import java.util.stream.Collectors;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArraySet;
+import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.core.StopAnalyzer;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.codecs.simpletext.SimpleTextCodec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
@@ -134,7 +136,7 @@ public class Pikachu {
 
 		query_words = addSynonyms(query_words);
 
-		query = query_words.stream().map((x) -> String.format("body:%s", x)).collect(Collectors.joining(" "));
+		query = query_words.stream().collect(Collectors.joining(" "));
 
 		System.out.printf("Modified Query: %s\n", query);
 
@@ -149,12 +151,11 @@ public class Pikachu {
 			Document doc = searcher.doc(sd.doc);
 			String answer = this.cleanQuery(doc.get(BODY_FIELD));
 
-			// TokenStream tokens = this.analyzer.tokenStream("", answer);
+			try (TokenStream ts = this.analyzer.tokenStream(null, answer)) {
+				ts.reset();
+				while (ts.incrementToken()) {
+					String key = ts.getAttribute(CharTermAttribute.class).toString().toLowerCase();
 
-			for (String word : answer.split("\\s+")) {
-				String key = word.toLowerCase();
-
-				if (!this.stopWords.contains(key)) {
 					Integer count = wordCount.getOrDefault(key, 0);
 					count++;
 					wordCount.put(key, count);
@@ -162,11 +163,11 @@ public class Pikachu {
 			}
 		}
 
-		System.out.println("finding top 5");
+		System.out.println("finding top 8 words");
 		List<String> top5words = wordCount.entrySet().stream().sorted((e1, e2) -> e2.getValue() - e1.getValue())
-				.limit(5).map((e) -> e.getKey()).collect(Collectors.toList());
+				.limit(8).map((e) -> e.getKey()).collect(Collectors.toList());
 
-		System.out.println("adding top 5 to the query");
+		System.out.println("adding words to the query");
 		query = String.format("%s %s", query,
 				top5words.stream().map((x) -> String.format("\"%s\"^2", x)).collect(Collectors.joining(" ")));
 
