@@ -21,8 +21,9 @@ import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.codecs.simpletext.SimpleTextCodec;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
-import org.apache.lucene.document.StoredField;
+import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
@@ -35,6 +36,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.similarities.BM25Similarity;
+import org.apache.lucene.search.vectorhighlight.FastVectorHighlighter;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 
@@ -65,6 +67,15 @@ public class Pikachu {
 	public IndexSearcher searcher;
 	public DirectoryReader reader;
 	public BloomFilter<String> bloomFilter;
+
+	private static FieldType TERM_VECTOR_TYPE;
+	static {
+		TERM_VECTOR_TYPE = new FieldType(TextField.TYPE_STORED);
+		TERM_VECTOR_TYPE.setStoreTermVectors(true);
+		TERM_VECTOR_TYPE.setStoreTermVectorPositions(true);
+		TERM_VECTOR_TYPE.setStoreTermVectorOffsets(true);
+		TERM_VECTOR_TYPE.freeze();
+	}
 
 	public Pikachu(String nfL6path, Path cacheDirectory, String synPyPath) throws IOException {
 		this.nfL6path = nfL6path;
@@ -119,10 +130,8 @@ public class Pikachu {
 					for (String answer : entry.NBestAnswers) {
 						Document doc = new Document();
 
-						// THIS IS NOT INDEXED!
-						// StoredField: Stored-only value for retrieving in summary results
-						// we only store the question ID in case we need to use it later
-						doc.add(new StoredField("questionID", entry.ID));
+						Field highlighterField = new Field("bodyHighlighter", answer, TERM_VECTOR_TYPE);
+						doc.add(highlighterField);
 
 						doc.add(new TextField(BODY_FIELD, answer, Store.YES));
 						writer.addDocument(doc);
@@ -194,18 +203,25 @@ public class Pikachu {
 		// extract top 5 words from the top 300 answers
 		System.out.println("counting words");
 		Map<String, Integer> wordCount = new HashMap<String, Integer>();
-		for (ScoreDoc sd : top300.scoreDocs) {
-			Document doc = searcher.doc(sd.doc);
-			String answer = this.cleanQuery(doc.get(BODY_FIELD));
+		{
+			Query parsed = this.qp.parse(query);
+			for (ScoreDoc sd : top300.scoreDocs) {
+				Document doc = searcher.doc(sd.doc);
+				String answer = this.cleanQuery(doc.get(BODY_FIELD));
 
-			try (TokenStream ts = this.analyzer.tokenStream(null, answer)) {
-				ts.reset();
-				while (ts.incrementToken()) {
-					String key = ts.getAttribute(CharTermAttribute.class).toString().toLowerCase();
+				FastVectorHighlighter highlighter = new FastVectorHighlighter();
+				highlighter.getBestFragments(highlighter.getFieldQuery(parsed), this.reader, sd.doc, "bodyHighlighter",
+						50, 5);
 
-					Integer count = wordCount.getOrDefault(key, 0);
-					count++;
-					wordCount.put(key, count);
+				try (TokenStream ts = this.analyzer.tokenStream(null, answer)) {
+					ts.reset();
+					while (ts.incrementToken()) {
+						String key = ts.getAttribute(CharTermAttribute.class).toString().toLowerCase();
+
+						Integer count = wordCount.getOrDefault(key, 0);
+						count++;
+						wordCount.put(key, count);
+					}
 				}
 			}
 		}
