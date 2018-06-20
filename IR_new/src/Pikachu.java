@@ -47,6 +47,7 @@ public class Pikachu {
 	public static final String BODY_FIELD = "body";
 	public static final String[] WH_STOP_WORDS = { "how", "what", "where", "who", "when", "which", "whom", "whose",
 			"why", "do" };
+	// public static final String[] WH_STOP_WORDS = {};
 	public static final Map<String, List<String>> hardcodedSynonyms = new HashMap<String, List<String>>() {
 		public static final long serialVersionUID = 1L;
 
@@ -164,6 +165,7 @@ public class Pikachu {
 
 		// keep only alphanumeric chars
 		query = this.cleanQuery(query);
+		String query_O = query;
 
 		for (String word : query.split("\\s+")) {
 			if (!this.hasAnyToken(word)) {
@@ -174,7 +176,7 @@ public class Pikachu {
 
 			String synKey = word.toLowerCase();
 			// TODO: fix this
-			if (false && hardcodedSynonyms.containsKey(synKey)) {
+			if (hardcodedSynonyms.containsKey(synKey)) {
 				for (String synonym : hardcodedSynonyms.get(synKey)) {
 					query_words.add(synonym);
 				}
@@ -184,7 +186,9 @@ public class Pikachu {
 		query_words = addSynonyms(query_words);
 
 		query = query_words.stream().collect(Collectors.joining(" "));
-
+		if (query.equals("")) {
+			query = query_O;
+		}
 		System.out.printf("Modified Query: %s\n", query);
 
 		// get top 300 answers
@@ -276,7 +280,7 @@ public class Pikachu {
 		Map<String, List<String>> allSynonyms = getSynonyms(query_words);
 
 		for (String word : query_words) {
-			result.add(String.format("%s^3", word));
+			result.add(String.format("\"%s\"^3", word));
 
 			String key = word.toLowerCase();
 			if (allSynonyms.containsKey(key)) {

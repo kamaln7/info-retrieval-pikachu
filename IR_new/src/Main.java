@@ -50,7 +50,7 @@ public class Main {
 	}
 
 	public static void main(String[] args) {
-		String nfL6path = "../scripts/nfL6.json", synPyPath = "../scripts/syn.py", questionsPath = "../questions.txt";
+		String nfL6path = "../scripts/nfL6.json", synPyPath = "../scripts/syn.py", questionsPath = "../finalEval.txt";
 		Path cacheDirPath = new File("./cache/index").toPath();
 
 		try {
