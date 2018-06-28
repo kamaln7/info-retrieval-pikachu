@@ -30,11 +30,11 @@ This will download the latest nltk corpi.
 
 To run the Pikachu search engine:
 
-Either adjust the paths in Main.java and Pikachu.java and execute the `pikachu.jar` file inside `IR_new` (in that directory!); or:
+Either adjust the paths in Main.java and Pikachu.java and compile and execute; or:
 
-1. Compile the code into an executable .jar file using Eclipse.
-2. Prepare nfL6.json and questions.txt (per the evaluation format).
+1. Compile the code into an executable .jar file using Eclipse or [download here](https://kmln.sr/PfFEckr)
+2. Prepare nfL6.json and questions.txt (per the evaluation format- one question per line: `id\tquestion`)
 3. Place questions.txt outside next to the IR_new directory and name it finalEval.txt
-4. Place nfL6.json in the scripts directory. It was removed from the repository due to GitHub not allowing files larger than 100MB.
-5. `cd` into the `IR_new` directory. The program must be run there.
-6. Run the jar file `java -jar pikachu.jar`, inside `IR_new`.
+4. Place nfL6.json in the scripts directory. It was removed from the repository due to GitHub not allowing files larger than 100MB
+5. `cd` into the `IR_new` directory. The program must be run there
+6. Run the jar file `java -jar pikachu.jar`, inside `IR_new`
